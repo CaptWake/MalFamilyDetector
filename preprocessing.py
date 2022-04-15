@@ -20,7 +20,6 @@ def extract_features_from_binary(binary_name, features_file=''):
     extractor = ember.features.PEFeatureExtractor(2, features_file=features_file)
     features = np.array(extractor.feature_vector(file_data))
     X = features[:,np.newaxis]
-    print(X.T.shape)
     return X.T
 
 
@@ -30,7 +29,7 @@ def test(model, clf, X_test, y_test):
 def train(model, clf, X_train, y_train):    
     model.fit(X_train, y_train)
 
-# mettere un parametro di mapping labels
+
 def predict(model, clf, X, label_mapping_file):
     if clf == 'rf':
         y_pred = model.predict_proba(X)
