@@ -1,8 +1,8 @@
 """
     TO-DO:
-        - Scrivere il codice per esportare in csv o json o npz 
-        - aggiungere export di y
-        - refactoring
+        - Scrivere il codice per esportare e importare in npz 
+        - Aggiungere messaggi di logging alle varie azioni di preprocessing 
+        - Refactoring
 """
 import pandas as pd
 import numpy as np
@@ -13,6 +13,8 @@ import file_parser
 import pathlib
 import hashlib
 import json
+import logging
+from logger import init_log
 
 from collections import OrderedDict 
 from sklearn.impute import SimpleImputer
@@ -24,33 +26,102 @@ DATA_FOLDER = '/home/students/derosa/bodmas/BODMAS/code/multiple_data/bluehex_mu
 MODEL_FOLDER = '/home/students/derosa/bodmas/BODMAS/code/multiple_models/bluehex_multiclass/'
 import lightgbm as lgb
 
-class PEPreprocessingBuilder: 
-    def from_existing_train_test_dataset(self, X_file, y_file):
-        X, y = PEDataset().load_test_train_from_file(X_file, y_file)
+class PEPreprocessingBuilder:
+    """
+    This class allows the user to create the correct preprocessing interface 
+    based on his particular needs.
+    """
+    def from_existing_train_test_dataset(self, X_filename, y_filename):
+        """Creates a preprocessing interface containing the existing features and targets datasets
+
+        Parameters
+        ----------
+        X_filename : str
+            The file location of the features dataset
+        y_filename : str
+            The file location of the targets dataset
+
+        Returns
+        -------
+        TrainTestPEPreprocessing
+            a preprocessing interface used to generate the pre-processed datasets from the loaded datasets
+        """
+        X, y = PEDataset().load_test_train_from_file(X_filename, X_filename)
+        logging.info(f'Loaded successfully features dataset {X_filename} and targets dataset {y_filename} ...')
         tpe = TrainTestPEPreprocessing()
         tpe.set_dataset({'X': X, 'y': y})
         return tpe
     
-    def new_train_test_dataset(self, dir_name,  y_file, features_file):
-        X, y = PEDataset().generate_test_train(dir_name, y_file, features_file)
+    def new_train_test_dataset(self, dir_name,  y_filename, features_filename):
+        """Creates a preprocessing interface containing the existing targets dataset and the newly generated features dataset 
+
+        Parameters
+        ----------
+        dir_name : str
+            The directory location of the samples used for building the features dataset
+        y_filename : str
+            The file location of the targets dataset
+        features_filename : str
+            The file location of the configuration file containing the features to be extracted from the samples
+        
+        Returns
+        -------
+        TrainTestPEPreprocessing
+            a preprocessing interface used to generate the pre-processed datasets from the loaded datasets
+        """
+        X, y = PEDataset().generate_test_train(dir_name, y_filename, features_filename)
+        logging.info('Generated successfully features dataset ...')
+        logging.info(f'Loaded successfully targets dataset {y_filename} ...')
         tpe = TrainTestPEPreprocessing()
         tpe.set_dataset({'X': X, 'y': y})
         return tpe
     
-    def from_existing_raw_dataset(self, X_file):
-        X = PEDataset().load_raw_from_file(X_file)
+    def from_existing_raw_dataset(self, X_filename):
+        """Creates a preprocessing interface containing the existing features dataset
+
+        Parameters
+        ----------
+        X_filename : str
+            The file location of the features dataset
+        
+        Returns
+        -------
+        RawPEPreprocessing
+            a preprocessing interface used to generate the pre-processed dataset from the loaded dataset
+        """
+        X = PEDataset().load_raw_from_file(X_filename)
+        logging.info(f'Loaded successfully features dataset {X_filename}...')
         rpe = RawPEPreprocessing()
         rpe.set_dataset(X)
         return rpe
     
-    def new_raw_dataset(self, dir_name, features_file):
-        X = PEDataset().generate_raw(dir_name, features_file)
+    def new_raw_dataset(self, dir_name, features_filename):
+        """Creates a preprocessing interface containing the newly generated features dataset
+
+        Parameters
+        ----------
+        dir_name : str
+            The directory location of the samples used for building the features dataset
+        features_filename : str
+            The file location of the configuration file containing the features to be extracted from the samples
+        
+        Returns
+        -------
+        RawPEPreprocessing
+            a preprocessing interface used to generate the pre-processed dataset from the loaded dataset
+        """
+        X = PEDataset().generate_raw(dir_name, features_filename)
+        logging.info('Generated successfully features dataset ...')
         rpe = RawPEPreprocessing()
         rpe.set_dataset(X)
         return rpe
 
 
 class PEPreprocessing:
+    """
+    A generic preprocessing interface used to define which operations should have
+    every specific preprocessing interface.
+    """
     dataset = None
     
     def set_dataset(self, X):
@@ -59,24 +130,31 @@ class PEPreprocessing:
     def get_dataset(self):
         return self.dataset
     
-    #def export_dataset(self, filename):   
-    
-    #@abstractmethod
+    """
+    Removing or correcting records with corrupted or invalid values from raw data, 
+    as well as removing records that are missing a large number of columns.
+    """
     def data_cleansing(self):
         pass
-        
-    #@abstractmethod
+    
+    """
+    Improving the quality of a feature for ML, which includes scaling and normalizing numeric values,
+    imputing missing values, clipping outliers, and adjusting values with skewed distributions.
+    """
     def feature_tuning(self):
         pass
     
-    #@abstractmethod
+    """
+    Transformations of training data can reduce the skewness of data as well as 
+    the prominence of outliers in the data
+    """
     def representation_transformation(self):
         pass
     
-    ''' 
-    Scale features to a standard range so that all values are within the new range of 0 and 1. 
+    """ 
+    Scales features to a standard range so that all values are within the new range of 0 and 1. 
     Useful for models that use a weighted sum of input variables i.e SVM, MLP, KNN
-    '''
+    """
     def _normalize(self, X):
         scaler = MinMaxScaler()
         X_scale = scaler.fit_transform(X)
@@ -84,10 +162,17 @@ class PEPreprocessing:
     
         
 class RawPEPreprocessing(PEPreprocessing):
+    """
+    A preprocessing interface focussed on manipulating the features dataset in order
+    to obtain the pre-preprocessed dataset that'll be used to feed the classificator 
+    for prediction purposes
+    """
     def get_X(self):
         return np.vstack(self.dataset['features'])
     
-    def export_dataset(self, filename):
+    def export_dataset(self, X_filename, protocol='csv'):
+        if protocol == 'csv':
+            self.dataset['X'].to_csv(X_filename, index=False)
         exported = self.dataset.to_json(orient="records")
         with open(filename, 'w+') as f:
             json.dump(json.loads(exported), f)
@@ -95,7 +180,7 @@ class RawPEPreprocessing(PEPreprocessing):
     def data_cleansing(self):
         self.dataset = pd.DataFrame(self.dataset, columns = ['sha256', 'features']).drop_duplicates(subset=['sha256'])
         return self
-    
+
     def representation_transformation(self):
         features = np.vstack(self.dataset['features'])
         self.dataset['features'] = self._normalize(features).tolist()
@@ -103,33 +188,42 @@ class RawPEPreprocessing(PEPreprocessing):
 
     
 class TrainTestPEPreprocessing(PEPreprocessing):
-    
+    """
+    A preprocessing interface focussed on manipulating the features and targets datasets in order
+    to obatin the pre-processed datasets that'll be used to feed the classificator 
+    for training and testing purposes
+    """
     def get_X_y(self):
         return np.vstack(self.dataset['X']['features']), self.dataset['y']
     
-    def export_dataset(self, filename):
-        self.dataset['X'] = self.dataset['X'].to_json(orient="records")
-        with open(filename, 'w+') as f:
-            json.dump(json.loads(self.dataset['X']), f)
+    def export_dataset(self, X_filename, y_filename, protocol='csv'):
+        if protocol == 'csv':
+            self.dataset['X'].to_csv(X_filename, index=False)
+            self.dataset['y'].to_csv(y_filename, index=False)
+        else:
+            X_json = self.dataset['X'].to_json(orient="records")
+            y_json = self.dataset['y'].to_json(orient="records")
+            with open(X_filename, 'w+') as f:
+                json.dump(json.loads(X_json), f)
+            with open(y_filename, 'w+') as f:
+                json.dump(json.loads(y_json), f)
     
     def data_cleansing(self):
         # removes duplicates
         self.dataset['X'] = pd.DataFrame(self.dataset['X'], columns = ['sha256', 'features']).drop_duplicates(subset=['sha256'])
         self.dataset['y'] = self.dataset['y'][(self.dataset['y']['sha'].isin(self.dataset['X']['sha256']))]
-        # added now
         return self
     
     def representation_transformation(self):
         features = np.vstack(self.dataset['X']['features'])
         self.dataset['X']['features'] = self._normalize(features).tolist()
         self.dataset['y']['family'] = self.__prepare_targets(list(self.dataset['y']['family']))
-        print(self.dataset['y'])
         return self
 
-    ''' 
+    """ 
     Transform training set to continuous labels using ordinal encoding cause the 
     families names are uncorrelated.
-    '''
+    """
     def __prepare_targets(self, y):
         le = LabelEncoder()
         y_enc = le.fit_transform(y)
@@ -142,57 +236,55 @@ class TrainTestPEPreprocessing(PEPreprocessing):
         for i in range(len(raw)):
             mapping[raw[i]] = enc[i]  # mapping: real label -> converted label
             inv_mapping[str(enc[i])] = raw[i] # inv_mapping: converted label -> real label
-        #print(inv_mapping)
-        #logging.debug(f'LabelEncoder mapping: {mapping}')
-        #logging.debug(f'after relabeling training: {Counter(y_train)}')
-        #utils.dump_json(inv_mapping, setting_data_folder, f'top_{families_cnt}_label_mapping.json')
+        logging.info(f'LabelEncoder mapping: {mapping}')
+        with open('label_mapping.json', 'w+') as f:
+            json.dump(inv_mapping, f)
     
     
 class PEDataset:
-    def generate_raw(self, dir_name, features_file):
+    def generate_raw(self, dir_name, features_filename):
         X = []
         files = pathlib.Path(dir_name).glob('*')
         print(files)
         for file in files:
-            X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_file)})
+            X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_filename)})
         return X
     
-    def load_raw_from_file(self, X_file):
-        return self.__extract_dataset_from_file(X_file)
+    def load_raw_from_file(self, X_filename):
+        return self.__extract_dataset_from_file(X_filename)
     
-    def generate_test_train(self, dir_name, y_file, features_file):
+    def generate_test_train(self, dir_name, y_filename, features_filename):
         X = []
         files = pathlib.Path(dir_name).glob('*')
         for file in files:
-            X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_file)})
+            X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_filename)})
         X = pd.DataFrame(X) 
-        y = self.__extract_dataset_from_file(y_file)
+        y = self.__extract_dataset_from_file(y_filename)
         return X, y
     
-    def load_test_train_from_file(self, X_file, y_file):
-        X = self.__parse_dataset_from_file(X_file)
-        y = self.__parse_dataset_from_file(y_file)
+    def load_test_train_from_file(self, X_filename, y_filename):
+        X = self.__parse_dataset_from_file(X_filename)
+        y = self.__parse_dataset_from_file(y_filename)
         return X, y
     
-    def __extract_features_from_binary(self, binary_name, features_file=''):
+    def __extract_features_from_binary(self, binary_name, features_filename=''):
         file_data = open(binary_name, 'rb').read()
-        extractor = ember.features.PEFeatureExtractor(2, features_file=features_file)
+        extractor = ember.features.PEFeatureExtractor(2, features_file=features_filename)
         features = np.array(extractor.feature_vector(file_data))
         return features
 
-    def __extract_dataset_from_file(self, file):
+    def __extract_dataset_from_file(self, filename):
         df = None 
-        ext = pathlib.Path(file).suffix
+        ext = pathlib.Path(filename).suffix
         if(ext == '.json'):
-            df = file_parser.JSONcreator().create_parser().parse(file)
+            df = file_parser.JSONcreator().create_parser().parse(filename)
         elif(ext == '.csv'):
-            df = file_parser.CSVcreator().create_parser().parse(file)
-        #elif(ext == '.npz'):
-        #    df = pd.DataFrame(np.load(file), columns=['X']
+            df = file_parser.CSVcreator().create_parser().parse(filename)
         return df
-    
+
     
 def main():
+    init_log('/home/students/derosa/', level=logging.INFO)
     #PEPreprocessingBuilder().from_existing_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
     pe1 = PEPreprocessingBuilder().new_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
     pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova.json')
@@ -203,7 +295,7 @@ def main():
     #print(type(pe1.data_cleansing().representation_transformation().get_dataset()))
     #print(pe1.get_X_y())
     #pe2.export_dataset('prova2.json')
-    pe1.data_cleansing().representation_transformation().export_dataset('prova4.json')
+    pe1.data_cleansing().representation_transformation().export_dataset('X.csv', 'y.csv', protocol='csv')
     
     
 # mettere un parametro di mapping labels
