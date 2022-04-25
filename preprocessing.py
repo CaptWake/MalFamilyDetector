@@ -3,6 +3,11 @@
         - Scrivere il codice per esportare e importare in npz 
         - Aggiungere messaggi di logging alle varie azioni di preprocessing 
         - Refactoring
+        
+        risolvere problema del csv che quando viene esportato salva il tutto come stringhe
+        e questo implica che le liste devono essere convertite manualmente, altrimenti utilizzare pickle
+        come suggerisce questo post di SO : https://stackoverflow.com/questions/49580996/why-do-my-lists-become-strings-after-saving-to-csv-and-re-opening-python
+        qui c'è il codice di conversione di stringa -> lista manuale:
 """
 import pandas as pd
 import numpy as np
@@ -172,18 +177,26 @@ class RawPEPreprocessing(PEPreprocessing):
     
     def export_dataset(self, X_filename, protocol='csv'):
         if protocol == 'csv':
-            self.dataset['X'].to_csv(X_filename, index=False)
+            self.dataset.to_csv(X_filename, index=False)
         exported = self.dataset.to_json(orient="records")
-        with open(filename, 'w+') as f:
+        with open(X_filename, 'w+') as f:
             json.dump(json.loads(exported), f)
     
     def data_cleansing(self):
-        self.dataset = pd.DataFrame(self.dataset, columns = ['sha256', 'features']).drop_duplicates(subset=['sha256'])
+        self.dataset.dropna(axis=0)
+        # remove missing values inside features vector
+        for idx, vec in enumerate(self.dataset['features']):
+            if pd.DataFrame(vec).isnull().values.any():
+                self.dataset.drop(idx, inplace=True)
+        logging.debug('Successfully removed missing values ...')
+        self.dataset.drop_duplicates(subset=['sha256'], inplace=True)
+        logging.debug('Successfully removed duplicates  ...')
         return self
 
     def representation_transformation(self):
         features = np.vstack(self.dataset['features'])
         self.dataset['features'] = self._normalize(features).tolist()
+        logging.debug('Successfully normalized features vector values ...')
         return self
 
     
@@ -209,15 +222,24 @@ class TrainTestPEPreprocessing(PEPreprocessing):
                 json.dump(json.loads(y_json), f)
     
     def data_cleansing(self):
-        # removes duplicates
-        self.dataset['X'] = pd.DataFrame(self.dataset['X'], columns = ['sha256', 'features']).drop_duplicates(subset=['sha256'])
+        self.dataset['X'].dropna(axis=0)
+        # remove missing values inside features vector
+        for idx, vec in enumerate(self.dataset['X']['features']):
+            if pd.DataFrame(vec).isnull().values.any():
+                self.dataset['X'].drop(idx, inplace=True) 
+        logging.debug('Successfully removed missing values ...')
+        self.dataset['X'].drop_duplicates(subset=['sha256'], inplace=True)
+        self.dataset['y'].drop_duplicates(subset=['sha'], inplace=True)
         self.dataset['y'] = self.dataset['y'][(self.dataset['y']['sha'].isin(self.dataset['X']['sha256']))]
+        logging.debug('Successfully removed duplicates  ...')
         return self
     
     def representation_transformation(self):
         features = np.vstack(self.dataset['X']['features'])
         self.dataset['X']['features'] = self._normalize(features).tolist()
+        logging.debug('Successfully normalized features vector values ...')
         self.dataset['y']['family'] = self.__prepare_targets(list(self.dataset['y']['family']))
+        logging.debug('Successfully encoded elabels ...')
         return self
 
     """ 
@@ -236,33 +258,91 @@ class TrainTestPEPreprocessing(PEPreprocessing):
         for i in range(len(raw)):
             mapping[raw[i]] = enc[i]  # mapping: real label -> converted label
             inv_mapping[str(enc[i])] = raw[i] # inv_mapping: converted label -> real label
-        logging.info(f'LabelEncoder mapping: {mapping}')
+        logging.debug(f'LabelEncoder mapping: {mapping}')
         with open('label_mapping.json', 'w+') as f:
             json.dump(inv_mapping, f)
     
     
 class PEDataset:
     def generate_raw(self, dir_name, features_filename):
+        """Creates a features vector dataframe from raw binaries inside a folder
+
+        Parameters
+        ----------
+        dir_name : str
+            The folder location containing the binaries
+        features_filename: str
+            The file location used for feature selection
+            
+        Returns
+        -------
+        DataFrame
+            a dataframe containing the following columns:
+                sha256 | features
+        """
         X = []
         files = pathlib.Path(dir_name).glob('*')
         print(files)
         for file in files:
             X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_filename)})
-        return X
+        return pd.DataFrame(X)
     
     def load_raw_from_file(self, X_filename):
+        """Loads an features vector dataframe
+
+        Parameters
+        ----------
+        X_filename : str
+            The file location of the features dataset, it must be in the form of csv or json
+            
+        Returns
+        -------
+        DataFrame
+            a dataframe containing the loaded features dataset
+        """
         return self.__extract_dataset_from_file(X_filename)
     
     def generate_test_train(self, dir_name, y_filename, features_filename):
+        """"Creates a features vector dataframe from raw binaries inside a folder
+
+        Parameters
+        ----------
+        dir_name : str
+            The folder location containing the binaries
+       y_filename : str
+            The file location of the targets dataset, it must be in the form of csv or json
+        features_filename: str
+            The file location used for feature selection
+        
+        Returns
+        -------
+        list<DataFrame>
+            a list containing a dataframe that represents the extracted features vectors from binaries 
+            and a dataframe representing targets variable
+        """
         X = []
         files = pathlib.Path(dir_name).glob('*')
         for file in files:
             X.append({'sha256': calculate_sha256(file), 'features': self.__extract_features_from_binary(file, features_filename)})
-        X = pd.DataFrame(X) 
         y = self.__extract_dataset_from_file(y_filename)
-        return X, y
+        return pd.DataFrame(X), y
     
     def load_test_train_from_file(self, X_filename, y_filename):
+        """Loads an existing features vector and targets datasets
+
+        Parameters
+        ----------
+        X_filename : str
+            The file location of the features dataset, it must be in the form of csv or json
+         y_filename : str
+            The file location of the targets dataset, it must be in the form of csv or json
+            
+        Returns
+        -------
+        list<DataFrame>
+            a list containing a dataframe that represents the extracted features vectors from binaries 
+            and a dataframe representing targets variable
+        """
         X = self.__parse_dataset_from_file(X_filename)
         y = self.__parse_dataset_from_file(y_filename)
         return X, y
@@ -280,22 +360,30 @@ class PEDataset:
             df = file_parser.JSONcreator().create_parser().parse(filename)
         elif(ext == '.csv'):
             df = file_parser.CSVcreator().create_parser().parse(filename)
+            # decodes the list because is encoded in str
+            if 'features' in df.columns:
+                if df.features.dtype == 'object':
+                    X = []
+                    for idx, vec in enumerate(df['features']):
+                        X.append(json.loads(vec))
+                    df['features'] = X
         return df
 
     
 def main():
-    init_log('/home/students/derosa/', level=logging.INFO)
+    init_log('/home/students/derosa/prova', level=logging.DEBUG)
     #PEPreprocessingBuilder().from_existing_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
     pe1 = PEPreprocessingBuilder().new_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
-    pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova.json')
+    pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova.csv')
     X = pe2.data_cleansing().representation_transformation().get_X()
-    #X = pe2.data_cleansing().get_X()
+    X = pe2.data_cleansing().get_X()
     lgbm_model = lgb.Booster(model_file=MODEL_FOLDER + 'gbdt_bluehex_families_238_r10.txt')
-    print(predict(lgbm_model, 'gbdt', X, DATA_FOLDER + 'top_238_label_mapping.json'))
-    #print(type(pe1.data_cleansing().representation_transformation().get_dataset()))
+    logging.info(predict(lgbm_model, 'gbdt', X, DATA_FOLDER + 'top_238_label_mapping.json'))
+    pe1.data_cleansing().representation_transformation()
     #print(pe1.get_X_y())
-    #pe2.export_dataset('prova2.json')
-    pe1.data_cleansing().representation_transformation().export_dataset('X.csv', 'y.csv', protocol='csv')
+    X, y = pe1.get_X_y()
+    pe2.export_dataset('prova2.json')
+    #pe2.data_cleansing().representation_transformation().export_dataset('X.csv', 'y.csv', protocol='csv')
     
     
 # mettere un parametro di mapping labels
@@ -311,7 +399,7 @@ def predict(model, clf, X, label_mapping_file):
     '''
     y_pred = np.argsort(-1 * y_pred, axis=1)[:, :1]
     
-    print(f'y_pred shape: {y_pred.shape} = {y_pred}')
+    logging.debug(f'y_pred shape: {y_pred.shape} = {y_pred}')
     mapping = utils.load_json(label_mapping_file)
     return [mapping[f'{prediction.item(0)}'] for prediction in y_pred]
 
