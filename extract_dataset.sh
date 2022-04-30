@@ -12,3 +12,5 @@ do
 	fi
 done
 echo "] }" >> dataset.json
+
+#cat dataset.json | jq -c '.data[] | {sha1: .hash.sha1,  sha256: .hash.sha256, md5: .hash.md5, av_labels : .vt.scans | to_entries | map([.key, .value])}' > prova.json
