@@ -4,3 +4,6 @@
 [submodule "BODMAS"]
 	path = BODMAS
 	url = https://github.com/whyisyoung/BODMAS
+[submodule "avclass"]
+	path = avclass
+	url = https://github.com/malicialab/avclass.git
