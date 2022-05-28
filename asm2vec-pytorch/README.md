@@ -184,3 +184,29 @@ python compare.py -i1 asm/123456 -i2 asm/654321 -m model.pt -e 30
 ```
 cosine similarity : 0.873684
 ```
+
+### extract_vectors.py
+
+```
+Usage: extract_vectors.py [OPTIONS]
+
+Options:
+  -m, --model TEXT   model path  [required]
+  -c, --device TEXT  hardware device to be used: cpu / cuda / auto  [default:
+                     auto]
+
+  -o, --output TEXT  output file path that contains vectors  [required]
+  --help             Show this message and exit.
+
+```
+
+```bash
+# Example
+python extract_vectors.py -m model.pt -o vectors.json
+```
+
+```
+2022-05-28 14:56:47,493 - extract_vectors.py - INFO - loading model: model.pt
+2022-05-28 14:56:47,497 - extract_vectors.py - INFO - model: model.pt loaded successfully
+2022-05-28 14:56:47,497 - extract_vectors.py - INFO - saving embeddings and function mapping to: vectors.json
+```
