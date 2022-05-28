@@ -1,7 +1,6 @@
 """
     TO-DO:
         - Scrivere il codice per esportare e importare in npz 
-        - Aggiungere messaggi di logging alle varie azioni di preprocessing 
         - Refactoring
         
         risolvere problema del csv che quando viene esportato salva il tutto come stringhe
@@ -18,6 +17,7 @@ import pathlib
 import hashlib
 import json
 import logging
+from logger import init_log
 
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
@@ -395,7 +395,7 @@ def predict(model, clf, X, label_mapping_file):
     y_pred = np.argsort(-1 * y_pred, axis=1)[:, :1]
     
     logging.debug(f'y_pred shape: {y_pred.shape} = {y_pred}')
-    mapping = json.load(label_mapping_file)
+    mapping = json.loads(open(label_mapping_file, 'r'))
     return [mapping[f'{prediction.item(0)}'] for prediction in y_pred]
 
 def calculate_sha256(filename):
