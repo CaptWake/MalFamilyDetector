@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import json
 import logging
 from sklearn.cluster import AgglomerativeClustering
