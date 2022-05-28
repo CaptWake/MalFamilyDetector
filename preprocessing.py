@@ -13,17 +13,12 @@ import pandas as pd
 import numpy as np
 import ember
 
-import utils
 import file_parser
 import pathlib
 import hashlib
 import json
 import logging
-from logger import init_log
 
-from collections import OrderedDict 
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 # togliere poi, usata solo per predict
@@ -400,7 +395,7 @@ def predict(model, clf, X, label_mapping_file):
     y_pred = np.argsort(-1 * y_pred, axis=1)[:, :1]
     
     logging.debug(f'y_pred shape: {y_pred.shape} = {y_pred}')
-    mapping = utils.load_json(label_mapping_file)
+    mapping = json.load(label_mapping_file)
     return [mapping[f'{prediction.item(0)}'] for prediction in y_pred]
 
 def calculate_sha256(filename):
@@ -412,4 +407,5 @@ def calculate_sha256(filename):
         return(sha256_hash.hexdigest())
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
     main()
