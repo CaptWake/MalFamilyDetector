@@ -3,9 +3,6 @@ import click
 import asm2vec
 import json
 
-def cosine_similarity(v1, v2):
-    return (v1 @ v2 / (v1.norm() * v2.norm())).item()
-
 @click.command()
 @click.option('-m', '--model', 'mpath', help='model path', required=True)
 @click.option('-c', '--device', default='auto', help='hardware device to be used: cpu / cuda / auto', show_default=True)
