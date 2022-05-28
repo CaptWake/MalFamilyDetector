@@ -17,7 +17,6 @@ import pathlib
 import hashlib
 import json
 import logging
-from logger import init_log
 
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
@@ -366,7 +365,7 @@ class PEDataset:
 
     
 def main():
-    init_log('/home/students/derosa/prova', level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
     #PEPreprocessingBuilder().from_existing_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
     pe1 = PEPreprocessingBuilder().new_train_test_dataset('/home/students/derosa/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
     pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova.csv')
@@ -407,5 +406,4 @@ def calculate_sha256(filename):
         return(sha256_hash.hexdigest())
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
     main()
