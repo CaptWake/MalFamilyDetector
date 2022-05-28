@@ -3,9 +3,7 @@
 ## Installation
 Use pip to install the required files:
 ```
-pip install numpy
-pip install pandas
-pip install matplotlib
+pip install -r requirements.txt
 pip install git+https://github.com/elastic/ember.git
 pip install -e asm2vec-pytorch
 ```
