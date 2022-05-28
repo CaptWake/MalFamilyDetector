@@ -22,3 +22,7 @@ If you are interested in classifying ELF binaries:
 1. Use the asm2vec-pytorch module to build and train the NN
 2. Extract the features with the script `extract_vectors.py`
 3. Use the frequency_clusters module to classify the binaries
+
+
+## Extras
+In case of supervised learning you could use the avclass package that helps you assign labels based on VT reports
