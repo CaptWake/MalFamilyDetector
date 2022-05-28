@@ -7,6 +7,5 @@ pip install numpy
 pip install pandas
 pip install matplotlib
 pip install git+https://github.com/elastic/ember.git
-pip install -e BODMAS/code
 pip install -e asm2vec-pytorch
 ```

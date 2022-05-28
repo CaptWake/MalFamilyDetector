@@ -1,9 +1,6 @@
 [submodule "asm2vec-pytorch"]
 	path = asm2vec-pytorch
 	url = https://github.com/oalieno/asm2vec-pytorch
-[submodule "BODMAS"]
-	path = BODMAS
-	url = https://github.com/whyisyoung/BODMAS
 [submodule "avclass"]
 	path = avclass
 	url = https://github.com/malicialab/avclass.git
