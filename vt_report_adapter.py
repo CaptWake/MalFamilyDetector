@@ -33,7 +33,6 @@ def cli(ipath, opath):
     
     #directory
     if os.path.isdir(ipath):
-        #with open(opath / 'reports.json', 'a+') as o:
         reports = ''
         for f in os.listdir(ipath):
             if not os.path.islink(ipath / f) and not os.path.isdir(ipath / f):
