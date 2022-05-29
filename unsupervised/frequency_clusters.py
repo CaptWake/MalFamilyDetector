@@ -10,17 +10,46 @@ from sklearn.manifold import TSNE
 from sklearn.cluster import AgglomerativeClustering, DBSCAN, KMeans
 
 class Cluster:
+    """A simple cluster data structure 
+
+    Parameters
+    ----------
+    __classDistribution : dict
+        The dictionary containing the mapping className -> frequency
+        where frequency is calculated by #samples of that class in this cluster
+    """
+    
     def __init__(self, classNamesList):
         self.__classDistribution = {}
         for className in classNamesList:
             self.__classDistribution[className] = 0.0
     def update(self, className: str) -> None:
+        """Updates the class distribution of this cluster"""
         if className in self.__classDistribution:
             self.__classDistribution[className] += 1
     def extractClassName(self) -> str:
+        """Returns the representative class name of this cluster"""
         return max(self.__classDistribution, key=self.__classDistribution.get)
 
 def predict_classes_KMeans(params, df, X, binaryToClass):
+    """Predict classes using the kmeans clustering algorithm
+
+    Parameters
+    ----------
+    params : dict
+        The dictionary containing the parameters of the KMeans model
+    df : DataFrame
+        The dataframe containing samples which 
+    X : ndarray
+        This represents the feature vectors used to fit the clustering model
+    binaryToClass : dict
+        The dictionary containing the mapping binaryname -> class
+
+    Returns
+    -------
+    list
+        a list of strings representing the predicted classes
+    """
     clusters = []
     classes = set(binaryToClass.values())
     n_classes  = len(classes)
@@ -40,6 +69,24 @@ def predict_classes_KMeans(params, df, X, binaryToClass):
     return predicted_classes
 
 def predict_classes_DBSCAN(params, df, X, binaryToClass):
+    """Predict classes using a DBSCAN clustering algorithm
+
+    Parameters
+    ----------
+    params : dict
+        The dictionary containing the parameters of the DBSCAN model
+    df : DataFrame
+        The dataframe containing samples which 
+    X : ndarray
+        This represents the feature vectors used to fit the clustering model
+    binaryToClass : dict
+        The dictionary containing the mapping binaryname -> class
+
+    Returns
+    -------
+    list
+        a list of strings representing the predicted classes
+    """
     clusters = []
     classes = set(binaryToClass.values())
     logging.info(f'starting DBSCAN clustering ...')
@@ -59,6 +106,22 @@ def predict_classes_DBSCAN(params, df, X, binaryToClass):
     return predicted_classes
 
 def predict_classes_naive(df, X, binaryToClass):
+    """Extract classes using a simple agglomerative clustering algorithm with single linkage
+
+    Parameters
+    ----------
+    df : DataFrame
+        The dataframe containing samples which 
+    X : ndarray
+        This represents the feature vectors used to fit the clustering model
+    binaryToClass : dict
+        The dictionary containing the mapping binaryname -> class
+
+    Returns
+    -------
+    list
+        a list of strings representing the predicted classes
+    """
     clusters = []
     classes = set(binaryToClass.values())
     n_classes  = len(classes)
@@ -77,6 +140,19 @@ def predict_classes_naive(df, X, binaryToClass):
     return predicted_classes
 
 def plot_binary_freq(df, binary, labels, opath):
+    """Plot the frequency of the binary based on the class label 
+
+    Parameters
+    ----------
+    df : DataFrame
+        The dataframe containing the samples 
+    binary : str
+        The string representing the binary file name
+    labels : list 
+        The list containing all the labels (classes)
+    opath : str
+        The output path were the plot will be saved
+    """
     data = df[df['binary'] == binary]
     g = sns.barplot(data=data, x='labels', y='freq', order=labels)
     g.set(title=binary, ylim=(0, 1.2))
