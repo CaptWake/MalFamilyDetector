@@ -33,7 +33,8 @@ Where example_settings.json should be something like this:
 {
     "dataset": "/path/to/your/dataset",
     "output_path": "example/",
-    "binary2class": "/path/to/binary2class file",
+    "binary2class": "/path/to/binary2class file", // this file should be a json file containing association of the form 
+                                                  // "filename" : "malwareclass"
     "model": {
         "name": "KMeans",
         "params": {
