@@ -19,11 +19,31 @@ In the first case the pipeline should be builded like follows:
 4. Classify 
 
 If you are interested in classifying ELF binaries:
-1. Use the asm2vec-pytorch module to build and train the NN
-2. Extract the features with the script `extract_vectors.py`
-3. Use the frequency_clusters module to classify the binaries
-
-
+1. Use the asm2vec-pytorch module to build and train the NN following the well written doc
+2. Extract the features with the script `extract_vectors.py` 
+```
+$ python extract_vectors.py -m mymodel.pt -o dataset.json 
+```
+3. You can use now the frequency_clusters module to classify the binaries specifying the configuration file
+```
+$ python frequency_clusters.py -cf example_setting.json
+```
+Where example_settings.json should be something like this:
+```json
+{
+    "dataset": "/path/to/your/dataset",
+    "output_path": "example/",
+    "binary2class": "/path/to/binary2class file",
+    "model": {
+        "name": "KMeans",
+        "params": {
+            "n_clusters": 7
+        }
+    }
+}
+```
+> **Note**  
+> If you want use the legacy mode you can omit the model specification in the configuration file 
 ## Extras
 In case of supervised learning you could use the avclass package that helps you assign labels based on VT reports.  
 A quick example helps illustrating the labeling process:  
