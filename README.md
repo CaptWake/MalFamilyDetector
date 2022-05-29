@@ -22,11 +22,11 @@ If you are interested in classifying ELF binaries:
 1. Use the asm2vec-pytorch module to build and train the NN following the well written [doc](https://github.com/CaptWake/Tesi-2021-2022/blob/main/asm2vec-pytorch/README.md)
 2. Extract the features with the script `extract_vectors.py` 
 ```
-$ python extract_vectors.py -m mymodel.pt -o dataset.json 
+$ python asm2vec-pytorch/scripts/extract_vectors.py -m mymodel.pt -o dataset.json 
 ```
 3. You can use now the frequency_clusters module to classify the binaries specifying the configuration file
 ```
-$ python frequency_clusters.py -cf example_setting.json
+$ python unsupervised/frequency_clusters.py -cf example_setting.json
 ```
 Where example_settings.json should be something like this:
 ```json
