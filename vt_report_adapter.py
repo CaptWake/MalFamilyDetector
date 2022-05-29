@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import click
+from pathlib import Path
 
 @click.command()
 @click.option('-f', '--file-name', 'fname', help='virustotal report', required=True)
@@ -9,6 +10,7 @@ import click
 
 
 def cli(fname, opath):
+    opath = Path(opath)
     hashes = ['md5', 'sha1', 'sha256']
     vt_report = json.load(open(fname, 'r'))['data']['attributes']
     report = {}
@@ -25,8 +27,8 @@ def cli(fname, opath):
     
     if not os.path.exists(opath):
         os.mkdir(opath)
-
-    json.dump(report, open(opath + 'report.json', 'w+'))
+    
+    json.dump(report, open(opath / 'report.json', 'w+'))
 
 if __name__ == '__main__':
     cli()
