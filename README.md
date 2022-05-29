@@ -25,4 +25,20 @@ If you are interested in classifying ELF binaries:
 
 
 ## Extras
-In case of supervised learning you could use the avclass package that helps you assign labels based on VT reports
+In case of supervised learning you could use the avclass package that helps you assign labels based on VT reports.  
+A quick example helps illustrating the labeling process:  
+With the help of the `vt_report_adapter.py` module you can generate a reports.json from all the vt reports inside the reports folder
+```
+$ python vt_report_adapter.py -i reports/
+```
+you can use this file as input for the `avclass2_labeler.py` module
+```sh
+$ python avclass/avclass2/avclass2_labeler.py -lb reports.json -p
+```
+the final output looks like this:
+```
+[-] 0 JSON readaca2d12934935b070df8f50e06a20539 75      CLASS:grayware|15,FILE:os:windows|13,CLASS:grayware:adware|11,FAM:adrotator|8
+76c643bd32186c2c7cb1f52c38c07bb3        68      UNK:disabler|13,UNK:winreg|8,UNK:prova|4,FILE:os:windows|2
+[-] 2 JSON read
+[-] Samples: 2 NoScans: 0 NoTags: 0 GroundTruth: 0
+```
