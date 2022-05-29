@@ -28,7 +28,7 @@ $ python asm2vec-pytorch/scripts/extract_vectors.py -m mymodel.pt -o dataset.jso
 ```
 $ python unsupervised/frequency_clusters.py -cf example_setting.json
 ```
-Where example_settings.json should be something like this:
+Where example_setting.json should be something like this:
 ```json
 {
     "dataset": "/path/to/your/dataset",
