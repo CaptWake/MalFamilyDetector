@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import json
 import logging
+from sklearn.manifold import TSNE
 from sklearn.cluster import AgglomerativeClustering
 
 
