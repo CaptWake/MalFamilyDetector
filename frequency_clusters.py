@@ -3,18 +3,11 @@ import numpy as np
 import seaborn as sns
 import json
 import logging
+import os
+from pathlib import Path
+import click
 from sklearn.manifold import TSNE
-from sklearn.cluster import AgglomerativeClustering
-
-
-#@click.command()
-#@click.option('-o', '--output', 'opath', default='', help='path to save plot figures', required=True)
-#@click.option('-i', '--input', 'ipath', help='path to fetch mapping and embeds in json format', required=True)
-#@click.option('-c', '--cluster-algorithm', 'c', default='slink', help='cluster algorithm to be used: tlsh / k-means / slink', show_default=True)
-#@click.option('-cf', '--config-file', 'cf', help='json configuration file containing binaryName: malwareClass', required=True)
-
-# configure logging 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
+from sklearn.cluster import AgglomerativeClustering, DBSCAN, KMeans
 
 class Cluster:
     def __init__(self, classNamesList):
@@ -27,12 +20,50 @@ class Cluster:
     def extractClassName(self) -> str:
         return max(self.__classDistribution, key=self.__classDistribution.get)
 
-def predict_classes(df, X, binaryToClass, linkage):
+def predict_classes_KMeans(params, df, X, binaryToClass):
+    clusters = []
+    classes = set(binaryToClass.values())
+    n_classes  = len(classes)
+    logging.info(f'starting KMeans clustering ...')
+    labels = KMeans(**params).fit(X).labels_
+    n_classes = len(set(labels))
+    for i in range(0, n_classes):
+        cluster = Cluster(classes)
+        indexes = np.where(labels==i)[0]
+        for idx in indexes:
+            binary = df.loc[idx, 'binary']
+            if binary in binaryToClass:
+                fn_class = binaryToClass[binary]
+                cluster.update(fn_class)
+        clusters.append(cluster)
+    predicted_classes = [clusters[label].extractClassName() for i, label in enumerate(labels)] 
+    return predicted_classes
+
+def predict_classes_DBSCAN(params, df, X, binaryToClass):
+    clusters = []
+    classes = set(binaryToClass.values())
+    logging.info(f'starting DBSCAN clustering ...')
+    labels = DBSCAN(**params).fit(X).labels_
+    n_classes = len(set(labels)) - (1 if -1 in labels else 0)
+    logging.info(f'estimated number of clusters: {n_classes}')
+    for i in range(0, n_classes):
+        cluster = Cluster(classes)
+        indexes = np.where(labels==i)[0]
+        for idx in indexes:
+            binary = df.loc[idx, 'binary']
+            if binary in binaryToClass:
+                fn_class = binaryToClass[binary]
+                cluster.update(fn_class)
+        clusters.append(cluster)
+    predicted_classes = [clusters[label].extractClassName() for i, label in enumerate(labels)] 
+    return predicted_classes
+
+def predict_classes_naive(df, X, binaryToClass):
     clusters = []
     classes = set(binaryToClass.values())
     n_classes  = len(classes)
     logging.info(f'starting clustering with {n_classes} clusters ...')
-    labels = AgglomerativeClustering(n_clusters=n_classes, affinity='cosine', linkage=linkage).fit(X).labels_
+    labels = AgglomerativeClustering(n_clusters=n_classes, affinity='cosine', linkage='single').fit(X).labels_
     for i in range(n_classes):
         cluster = Cluster(classes)
         indexes = np.where(labels==i)[0]
@@ -45,21 +76,36 @@ def predict_classes(df, X, binaryToClass, linkage):
     predicted_classes = [clusters[label].extractClassName() for i, label in enumerate(labels)] 
     return predicted_classes
 
-def plot_binary_freq(df, binary, labels):
+def plot_binary_freq(df, binary, labels, opath):
     data = df[df['binary'] == binary]
     g = sns.barplot(data=data, x='labels', y='freq', order=labels)
     g.set(title=binary, ylim=(0, 1.2))
     fig = g.get_figure()
-    fig.savefig(f'test/{binary}.png')
+    fig.savefig(opath / f'{binary}.png')
     fig.clf()
 
-def cli():
+@click.command()
+@click.option('-legacy', '--legacy-clustering', 'l', default=False, help='specify if wanna use the naive approach to identify clusters')
+@click.option('-cf', '--config-file', 'cf', help='json configuration file', required=True)
+
+def cli(legacy, cf):
+
+    
+    # configure logging 
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
+
     logging.info('loading the configuration file ...')
+    cfg = json.load(open(cf, 'r'))
+    opath = Path(cfg['output_path'])
+
+    if not os.path.exists(opath):
+        os.mkdir(opath)
+
     # binaryToClass = {'wireshark': 'zbot', ...}
-    binaryToClass = json.load(open('binaryToClass.json', 'r'))
+    binaryToClass = json.load(open(cfg['binary2class'], 'r'))
     
     logging.info('loading embedding and mapping file ...')
-    loaded_data = json.load(open('test_vectors_integrati.json', 'r'))
+    loaded_data = json.load(open(cfg['dataset'], 'r'))
     X = np.array(loaded_data['embeddings'])
     mapping_data = loaded_data['function_mapper']
     
@@ -72,10 +118,19 @@ def cli():
     df['labels'] = ''
     for binary in binaryToClass:
         df.loc[df['binary'] == binary, 'labels'] = binaryToClass[binary]
-        #print(f"[+] {df_full.loc[df_full['labels'] == '', 'labels'].count()}")
     
     logging.info('predicting classes ...')
-    classes = predict_classes(df, X, binaryToClass, 'single')
+    if legacy:
+        classes = predict_classes_naive(df, X, binaryToClass)
+    else:
+        model_info = cfg['model']
+        clustering_model_name = model_info['name']
+        clustering_functions = { 
+                            'DBSCAN': predict_classes_DBSCAN,
+                            'KMeans': predict_classes_KMeans
+                            }
+        clustering_function = clustering_functions[clustering_model_name]
+        classes = clustering_function(model_info['params'], df, X, binaryToClass)
     for i, clss in enumerate(classes):
         if df.loc[i, 'labels'] == '':
             df.loc[i, 'labels'] = clss
@@ -92,7 +147,7 @@ def cli():
         legend="full",
         alpha=0.3,
      ).get_figure()
-    fig.savefig('clusters.png')
+    fig.savefig(opath / 'clusters.png')
     fig.clf()
     logging.info(f'saved plot to clusters.png')
     
@@ -107,7 +162,7 @@ def cli():
     labels = df['labels'].unique()
     for binary in df['binary'].unique():
         logging.info(f'creating plot for binary {binary} ...')
-        plot_binary_freq(df, binary, labels)
+        plot_binary_freq(df, binary, labels, opath)
     
 
 if __name__ == '__main__':
