@@ -26,9 +26,9 @@ $ python asm2vec-pytorch/scripts/extract_vectors.py -m mymodel.pt -o dataset.jso
 ```
 3. You can use now the frequency_clusters module to classify the binaries specifying the configuration file
 ```
-$ python unsupervised/frequency_clusters.py -cf example_setting.json
+$ python unsupervised/frequency_clusters.py -cf example_settings.json
 ```
-Where example_setting.json should be something like this:
+Where example_settings.json should be something like this:
 ```json
 {
     "dataset": "/path/to/your/dataset",
