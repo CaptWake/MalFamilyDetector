@@ -1,7 +1,3 @@
-"""
-    TO-DO:
-        - Scrivere il codice per esportare e importare in npz 
-"""
 import pandas as pd
 import numpy as np
 import ember
@@ -14,10 +10,6 @@ import logging
 
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
-# togliere poi, usata solo per predict
-DATA_FOLDER = '/home/students/derosa/bodmas/BODMAS/code/multiple_data/bluehex_multiclass/'
-MODEL_FOLDER = '/home/students/derosa/bodmas/BODMAS/code/multiple_models/bluehex_multiclass/'
-import lightgbm as lgb
 
 class PEPreprocessingBuilder:
     """
@@ -341,38 +333,6 @@ class PEDataset:
         elif(ext == '.csv'):
             df = file_parser.CSVcreator().create_parser().parse(filename)
         return df
-    
-def main():
-    #pe1 = PEPreprocessingBuilder().new_train_test_dataset('/home/students/derosa/bodmas/test/', '/home/students/derosa/bodmas/bodmas_metadata.csv', '/home/students/derosa/config.json')
-    pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova.csv')
-    #pe2 = PEPreprocessingBuilder().from_existing_raw_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/prova2.json')
-    pe1 = PEPreprocessingBuilder().new_raw_dataset('/home/students/derosa/bodmas/test/', '/home/students/derosa/config.json')
-    pe3 = PEPreprocessingBuilder().from_existing_train_test_dataset('/home/students/derosa/bodmas/BODMAS/code/bodmas/X.csv', '/home/students/derosa/bodmas/bodmas_metadata.csv')
-    print(pe3.get_X_y())
-    print(pe3.data_cleansing().representation_transformation().get_X_y())
-    X = pe2.data_cleansing().representation_transformation().get_X()
-    lgbm_model = lgb.Booster(model_file=MODEL_FOLDER + 'gbdt_bluehex_families_238_r10.txt')
-    logging.info(f"Predicted labels -> {predict(lgbm_model, 'gbdt', X, DATA_FOLDER + 'top_238_label_mapping.json')}")
-    #pe1.export_dataset('prova2.json')
-    #pe2.data_cleansing().representation_transformation().export_dataset('X.csv', 'y.csv', protocol='csv')
-    
-    
-# mettere un parametro di mapping labels
-def predict(model, clf, X, label_mapping_file):
-    if clf == 'rf':
-        y_pred = model.predict_proba(X)
-    else:
-        y_pred = model.predict(X)
-
-    ''' use -1 to sort in descending order.
-        another solution is to use np.flip(y_pred, axis=1)
-        y_pred[::-1] would reverse with axis=0
-    '''
-    y_pred = np.argsort(-1 * y_pred, axis=1)[:, :1]
-    
-    logging.debug(f'y_pred shape: {y_pred.shape} = {y_pred}')
-    mapping = json.load(open(label_mapping_file, 'r'))
-    return [mapping[str(prediction.item(0))] for prediction in y_pred]
 
 def calculate_sha256(filename):
     sha256_hash = hashlib.sha256()
@@ -381,7 +341,3 @@ def calculate_sha256(filename):
         for byte_block in iter(lambda: f.read(4096),b""):
             sha256_hash.update(byte_block)
         return(sha256_hash.hexdigest())
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(filename)s - %(levelname)s - %(message)s")
-    main()
