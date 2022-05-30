@@ -14,9 +14,9 @@ There are different pipelines to classify malware based on which type of binary 
 - ELF
 
 In the first case the pipeline should be builded like follows:
-1. Create the dataset using the preprocessing module
-3. Build a supervised learning algorithm using BODMAS pipeline
-4. Classify 
+1. Create the dataset using the preprocessing module, the schema of the dataset follows the [BODMAS](https://github.com/whyisyoung/BODMAS) convention
+2. Build a model using a supervised learning algorithm
+3. Classify 
 
 If you are interested in classifying ELF binaries:
 1. Use the asm2vec-pytorch module to build and train the NN following the well written [doc](https://github.com/CaptWake/Tesi-2021-2022/blob/main/asm2vec-pytorch/README.md)
