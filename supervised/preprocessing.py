@@ -156,12 +156,13 @@ class RawPEPreprocessing(PEPreprocessing):
         # select only feature columns
         return self.dataset.iloc[:, 0:-1].to_numpy()
     
-    def export_dataset(self, X_filename, protocol='csv'):
+    def export_dataset(self, X_fname, protocol='csv'):
         if protocol == 'csv':
-            self.dataset.to_csv(X_filename, index=False)
-        exported = self.dataset.to_json(orient="records")
-        with open(X_filename, 'w+') as f:
-            json.dump(json.loads(exported), f)
+            self.dataset.to_csv(X_fname, index=False)
+        else:
+            exported = self.dataset.to_json(orient="records")
+            with open(X_fname, 'w+') as f:
+                json.dump(json.loads(exported), f)
     
     def data_cleansing(self):
         self.dataset.dropna(axis=0)
@@ -186,16 +187,16 @@ class TrainTestPEPreprocessing(PEPreprocessing):
     def get_X_y(self):
         return self.dataset['X'].iloc[:, 0:-1].to_numpy(), self.dataset['y']
     
-    def export_dataset(self, X_filename, y_filename, protocol='csv'):
+    def export_dataset(self, X_fname, y_fname, protocol='csv'):
         if protocol == 'csv':
-            self.dataset['X'].to_csv(X_filename, index=False)
-            self.dataset['y'].to_csv(y_filename, index=False)
+            self.dataset['X'].to_csv(X_fname, index=False)
+            self.dataset['y'].to_csv(y_fname, index=False)
         else:
             X_json = self.dataset['X'].to_json(orient="records")
             y_json = self.dataset['y'].to_json(orient="records")
-            with open(X_filename, 'w+') as f:
+            with open(X_fname, 'w+') as f:
                 json.dump(json.loads(X_json), f)
-            with open(y_filename, 'w+') as f:
+            with open(y_fname, 'w+') as f:
                 json.dump(json.loads(y_json), f)
     
     def data_cleansing(self):
