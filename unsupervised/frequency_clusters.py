@@ -161,7 +161,7 @@ def plot_binary_freq(df, binary, labels, opath):
     fig.clf()
 
 @click.command()
-@click.option('-legacy', '--legacy-clustering', 'l', default=False, help='specify if wanna use the naive approach to identify clusters')
+@click.option('-legacy', '--legacy-clustering', 'legacy', default=False, help='specify if wanna use the naive approach to identify clusters')
 @click.option('-cf', '--config-file', 'cf', help='json configuration file', required=True)
 
 def cli(legacy, cf):
