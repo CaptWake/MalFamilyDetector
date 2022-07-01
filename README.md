@@ -1,4 +1,4 @@
-# Tesi-2021-2022
+# MalFamilyDetector
 
 ## Installation
 Use pip to install the required files:
